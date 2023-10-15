@@ -1,8 +1,0 @@
----
-title: "Chicago Crime Analysis"
----
-
-```{r}
-data=read.csv('CrimesChicago20220225.csv')
-```
-
