@@ -1,32 +1,160 @@
 ---
-title: "Ogden_Randall_ProjectNo5"
-author: "Randall Davis Ogden"
-date: "2023-10-15"
-output: 
+title: "Project 5 - Spatial Clustering and Structure of Crimes in the City of Chicago"
+output:
   word_document:
     reference_docx: CE 597 Project Report Template.docx
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+# Abstract
+
+------------------------------------------------------------------------
+
+# Data Exploration
+
+```{r, include=FALSE}
+library(stringr)
+library(rmarkdown)
+library(sf)
+library(ggplot2)
+library(dplyr)
+library(stringi)
+library(lubridate)
+library(mapview)
+library(leafpop)
+library(spatstat)
+library(dbscan)
+library(RColorBrewer)
+
+knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(include = FALSE)
+data=read.csv('CrimesChicago20220225.csv')
+data=data[,c('DATE..OF.OCCURRENCE','PRIMARY.DESCRIPTION','BEAT',
+              'WARD','LATITUDE','LONGITUDE')]
+data=na.omit(data)
+data$DATE..OF.OCCURRENCE=as.POSIXlt(data$DATE..OF.OCCURRENCE,
+                                    tz='America/Detroit',
+                                    tryFormats ='%m/%d/%Y %I:%M:%S %p')
+data=data%>%
+  rename(DATE=DATE..OF.OCCURRENCE,DESCRIPTION=PRIMARY.DESCRIPTION)
 ```
 
-## R Markdown
-
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
-
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
-
-```{r cars}
-summary(cars)
+```{r,include=TRUE,echo=TRUE,fig.align='center',fig.cap='Figure 1 - Day Distribution by Crime',fig.dim=c(4,3)}
+data=data%>%
+  mutate(DAY=wday(DATE,label=TRUE)) %>%
+  mutate(MONTH=month(DATE,label=TRUE))%>%
+  mutate(HOUR=hour(DATE))
+ggplot(data = data, aes(x=HOUR))+
+  stat_count(fill='lightblue',color='black')+
+  labs(title = 'Chicago Crime',
+       subtitle='Hourly Crime Distribution')+
+  xlab('Hour')+
+  ylab('Frequency')+
+  scale_x_discrete(breaks=1:23, limits=as.character(1:23))+
+  theme_gray()
 ```
 
-## Including Plots
+```{r}
+#group according to crime "category"
+violent=str_c(c('HOMICIDE','ASSAULT','BATTERY'), collapse = '|')
+theft=str_c(c('MOTOR VEHICLE THEFT','ROBBERY','BURGLARY','THEFT'), collapse = '|')
+narcotic=str_c(c('NARCOTICS','OTHER NARCOTIC VIOLATION'), collapse = '|')
 
-You can also embed plots, for example:
+data=data%>%
+  rename_with(.fn=function(x){str_to_title(x)})%>%
+  mutate(Category=case_when(str_detect(Description,violent)~'VIOLENT',
+                        str_detect(Description,theft)~'THEFT',
+                        str_detect(Description,narcotic)~'DRUG',
+                        .default = 'OTHER' ))%>%
+  filter(str_detect(Category,'VIOLENT|THEFT|DRUG'))
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+head(data)
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+```{r}
+#hourly crime distribution by category of crime
+data%>%
+  group_by(Category,Hour)%>%
+  ggplot(aes(x=Hour,fill=Category))+
+  labs(title = 'Chicago Crime',
+       subtitle='Hourly Crime Distribution')+
+  xlab('Hour')+
+  ylab('Frequency')+
+  stat_count()+
+  theme_grey()
+
+```
+
+```{r}
+data_sf=st_as_sf(data,
+                 coords = c('Longitude','Latitude'),
+                 crs = 'EPSG:4326')
+data_sf=data_sf%>%
+  filter(!is.na(geometry))
+
+shp=list.files(pattern = '.shp')
+comm_boundary=st_read(shp, 
+                      crs='EPSG:4326')
+mapviewOptions(basemaps='OpenStreetMap')
+crime_map=mapview(data_sf,
+                  zcol='Category',
+                  col.regions=brewer.pal(3,'Dark2'),
+                  legend=TRUE,
+                  popup=popupTable(x=st_set_geometry(data_sf,NULL),
+                                   row.numbers=FALSE,
+                                   feature.id=FALSE),
+                  layer.name='Crime Spatial Distribution')
+comm_boundary=comm_boundary%>%
+  mutate(violent=sum(st_intersects(comm_boundary,filter(data_sf,Category=='VIOLENT'), sparse=FALSE)))
+```
+
+------------------------------------------------------------------------
+
+# Spatial Clustering
+
+------------------------------------------------------------------------
+
+# Spatial Structure
+
+------------------------------------------------------------------------
+
+# Summary/Concluding Remarks
+
+------------------------------------------------------------------------
+
+# Appendix
+
+```{r}
+#daily crime distribution
+ggplot(data = data, aes(x=DAY))+
+  stat_count(fill='lightblue',color='black')+
+  labs(title = 'Chicago Crime',
+       subtitle='Daily Crime Distribution')+
+  xlab('Day')+
+  ylab('Frequency')+
+  scale_x_discrete()+
+  theme_gray()
+```
+
+```{r}
+#monthly crime distribution
+ggplot(data = data, aes(x=MONTH))+
+  stat_count(fill='lightblue',color='black')+
+  labs(title = 'Chicago Crime',
+       subtitle='Monthly Crime Distribution')+
+  xlab('Month')+
+  ylab('Frequency')+
+  scale_x_discrete()+
+  theme_gray()
+```
+
+```{r}
+#monthly crime distribution
+ggplot(data = data, aes(x=DESCRIPTION))+
+  stat_count(fill='lightblue',color='black')+
+  labs(title = 'Chicago Crime',
+       subtitle='Crime Distribution by Category')+
+  ylab('Frequency')+
+  theme_grey()+
+  theme(axis.text.y = element_text(size = 7))+
+  coord_flip()
+```
