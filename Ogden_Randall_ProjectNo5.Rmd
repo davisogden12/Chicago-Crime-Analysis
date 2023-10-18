@@ -83,15 +83,13 @@ data_filtered%>%
 
 ```
 
-```{r}
+```{r Task}
 data_sf=st_as_sf(data_filtered,
                  coords = c('Longitude','Latitude'),
                  crs = 'EPSG:4326')
 data_sf=data_sf%>%
   filter(!is.na(geometry))
 shp=list.files(pattern = '.shp')
-
-comm_boundary=st_read(shp)
 mapviewOptions(basemaps='OpenStreetMap', fgb = FALSE)
 crime_map=mapview(data_sf,
                   zcol='Category',
@@ -101,7 +99,7 @@ crime_map=mapview(data_sf,
                                    row.numbers=FALSE,
                                    feature.id=FALSE),
                   layer.name='Crime Spatial Distribution')
-#readPNG('mapshot.png', native=TRUE)
+knitr::include_graphics('mapshot.png')
 ```
 
 ------------------------------------------------------------------------
@@ -121,7 +119,7 @@ ggplot(violent,aes(y=Latitude,x=Longitude))+
 
 ```{r violent_clusters}
 violent%>%
-dbscan(eps=1.5/6371, minPts = 100)%>%
+dbscan(eps=1.5/6371, minPts = 10)%>%
   fviz_cluster(data = violent, geom = 'point', main = 'Clustering of Violent Crimes', pointsize = 0.1)
 ```
 
@@ -161,7 +159,7 @@ ggplot(data = data, aes(x=Month))+
   theme(plot.title = element_text(hjust = 0.5, size = 12))
 ```
 
-```{r}
+```{r, fig.height=5}
 #monthly crime distribution
 ggplot(data = data, aes(x=Description))+
   stat_count(fill='lightblue',color='black')+
