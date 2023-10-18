@@ -108,10 +108,10 @@ knitr::include_graphics('mapshot.png')
 
 # Spatial Clustering
 
-```{r violent_points}
+```{r density}
 violent=data_filtered%>%
   filter(Category=='Violent')%>%
-  select(Latitude,Longitude)
+  select(Longitude,Latitude)
 ggplot(data=violent,aes(x=Longitude, y=Latitude))+
   geom_density2d_filled(bins=5, color='white')+
   labs(title='Violent Crime Density')+
@@ -120,21 +120,44 @@ ggplot(data=violent,aes(x=Longitude, y=Latitude))+
         legend.position = 'none')
 ```
 
-```{r violent_clusters}
-violent[,c(2,1)]%>%
+```{r db_outside peaks}
+violent%>%
   scale()%>%
-dbscan(eps=0.17, minPts = 1200)%>%
-  fviz_cluster(data = violent[,c(2,1)], geom = 'point',
-               main = 'Clustering of Violent Crimes', pointsize = 0.05)+
+dbscan(eps=0.18, minPts = 600)%>%
+  fviz_cluster(data = violent, geom = 'point',
+               main = 'DBSCAN Clustering of Violent Crimes', pointsize = 0.05)+
   theme(plot.title = element_text(hjust = 0.5, size = 12))
 ```
-```{r}
 
+large eps less outliers
+small eps more outliers
+small eps and large minPts will yield extremely high peak points and a lot of noise points, meaning that you may miss patterns on a more local level.
+
+```{r db_high_peaks}
+db_violent=violent%>%
+  scale()%>%
+dbscan(eps=0.15, minPts = 1150)
+db_violent_plot=fviz_cluster(db_violent,data = violent, geom = 'point',
+               main = 'DBSCAN Clustering of Violent Crimes', pointsize = 0.05)+
+  theme(plot.title = element_text(hjust = 0.5, size = 12))
+```
+now lets try Kmeans
+```{r kmeans}
+k_violent=violent%>%
+  scale()%>%
+  kmeans(centers = 5)
+k_violent_plot=fviz_cluster(k_violent,data = violent, geom = 'point',
+               main = 'Kmeans Clustering of Violent Crimes', pointsize = 0.05)+
+  theme(plot.title = element_text(hjust = 0.5, size = 12))
 ```
 
 ------------------------------------------------------------------------
 
 # Spatial Structure
+
+```{r}
+op_violent=
+```
 
 ------------------------------------------------------------------------
 
@@ -183,3 +206,24 @@ ggplot(data = data, aes(x=Description))+
   coord_flip()+
   theme(plot.title = element_text(hjust = 0.5, size = 12))
 ```
+```{r Task_2_theft}
+theft=data_filtered%>%
+  filter(Category=='Theft')%>%
+  select(Longitude,Latitude)
+
+db_theft=theft%>%
+  scale()%>%
+dbscan(eps=0.15, minPts = 1150)
+  fviz_cluster(db_theft,data = theft, geom = 'point',
+               main = 'DBSCAN Clustering of Theft Crimes', pointsize = 0.05)+
+  theme(plot.title = element_text(hjust = 0.5, size = 12))
+  
+k_theft=theft%>%
+  scale()%>%
+  kmeans(centers = 5)
+  fviz_cluster(k_theft,data = theft, geom = 'point',
+               main = 'Kmeans Clustering of Theft Crimes', pointsize = 0.05)+
+  theme(plot.title = element_text(hjust = 0.5, size = 12))
+  kNNdistplot()
+```
+
